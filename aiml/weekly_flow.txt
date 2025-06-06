@@ -1,0 +1,11 @@
+Weekly Milestones
+Week	Focus Area	Deliverable
+1	Python & ML Basics	Python data processing scripts
+2	Transformers & NLP	Basic question generator
+3	Symbolic AI	Math problem solver
+4	Behavioral Analysis	Focus pattern clustering
+5	Gamification	Reward system prototype
+6	Deployment	Containerized AI services
+7	Integration	API endpoints for backend
+8	Advanced Features	Content summarization system
+9-10	Optimization	Model tuning & performance improvements
