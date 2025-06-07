@@ -1,19 +1,22 @@
-const ChatMessage = require('../models/ChatMessage'); // Model for chat messages
-const User = require('../models/userSchema'); // User model
-const io = require("socket.io"); // WebSockets for real-time chat
+const ChatMessage = require("../models/ChatMessage");
+const User = require("../models/userSchema");
+const io = require("socket.io");
 
-let activeUsers = new Map(); // Track active users
+let activeUsers = new Map();
 
 module.exports = (server) => {
   const socketServer = io(server, {
-    cors: { origin: "*" }
+    cors: { origin: "*" },
   });
 
   socketServer.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
     // User joins a chat room
-    socket.on("joinRoom", ({ userId, roomId }) => {
+    socket.on("joinRoom", async ({ userId, roomId }) => {
+      const user = await User.findById(userId);
+      if (!user) return;
+
       socket.join(roomId);
       activeUsers.set(userId, socket.id);
       socketServer.to(roomId).emit("userJoined", { userId });
@@ -21,7 +24,7 @@ module.exports = (server) => {
 
     // Handle sending messages
     socket.on("sendMessage", async ({ senderId, receiverId, roomId, message }) => {
-      const newMessage = new ChatMessage({ senderId, receiverId, roomId, message });
+      const newMessage = new ChatMessage({ sender: senderId, receiver: receiverId, roomId, message });
       await newMessage.save();
 
       socketServer.to(roomId).emit("receiveMessage", newMessage);
@@ -35,6 +38,11 @@ module.exports = (server) => {
     // Mark messages as seen
     socket.on("markAsSeen", async ({ messageId }) => {
       await ChatMessage.findByIdAndUpdate(messageId, { seen: true });
+    });
+
+    // Delete message
+    socket.on("deleteMessage", async ({ messageId }) => {
+      await ChatMessage.findByIdAndUpdate(messageId, { deleted: true });
     });
 
     // Disconnect user
