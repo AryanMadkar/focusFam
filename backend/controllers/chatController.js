@@ -14,41 +14,66 @@ module.exports = (server) => {
 
     // User joins a chat room
     socket.on("joinRoom", async ({ userId, roomId }) => {
-      const user = await User.findById(userId);
-      if (!user) return;
+      try {
+        const user = await User.findById(userId);
+        if (!user) return;
 
-      socket.join(roomId);
-      activeUsers.set(userId, socket.id);
-      socketServer.to(roomId).emit("userJoined", { userId });
+        socket.join(roomId);
+        activeUsers.set(userId, socket.id);
+        socketServer.to(roomId).emit("userJoined", { userId });
+      } catch (err) {
+        socket.emit("error", { message: "Failed to join room." });
+      }
     });
 
     // Handle sending messages
     socket.on("sendMessage", async ({ senderId, receiverId, roomId, message }) => {
-      const newMessage = new ChatMessage({ sender: senderId, receiver: receiverId, roomId, message });
-      await newMessage.save();
-
-      socketServer.to(roomId).emit("receiveMessage", newMessage);
+      try {
+        const newMessage = new ChatMessage({ sender: senderId, receiver: receiverId, roomId, message });
+        await newMessage.save();
+        socketServer.to(roomId).emit("receiveMessage", newMessage);
+      } catch (err) {
+        socket.emit("error", { message: "Failed to send message." });
+      }
     });
 
     // Typing indicator
     socket.on("userTyping", ({ userId, roomId }) => {
-      socketServer.to(roomId).emit("typingIndicator", { userId });
+      try {
+        socketServer.to(roomId).emit("typingIndicator", { userId });
+      } catch (err) {
+        socket.emit("error", { message: "Typing indicator error." });
+      }
     });
 
     // Mark messages as seen
     socket.on("markAsSeen", async ({ messageId }) => {
-      await ChatMessage.findByIdAndUpdate(messageId, { seen: true });
+      try {
+        await ChatMessage.findByIdAndUpdate(messageId, { seen: true });
+      } catch (err) {
+        socket.emit("error", { message: "Failed to mark as seen." });
+      }
     });
 
     // Delete message
     socket.on("deleteMessage", async ({ messageId }) => {
-      await ChatMessage.findByIdAndUpdate(messageId, { deleted: true });
+      try {
+        await ChatMessage.findByIdAndUpdate(messageId, { deleted: true });
+      } catch (err) {
+        socket.emit("error", { message: "Failed to delete message." });
+      }
     });
 
     // Disconnect user
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);
-      activeUsers.delete(socket.id);
+      // Remove user from activeUsers by userId
+      for (const [userId, sockId] of activeUsers.entries()) {
+        if (sockId === socket.id) {
+          activeUsers.delete(userId);
+          break;
+        }
+      }
     });
   });
 };
