@@ -1,11 +1,12 @@
 const mongoose = require("mongoose");
 
 const ChatMessageSchema = new mongoose.Schema({
-  senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  receiverId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  receiver: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false }, // Null for group chats
   roomId: { type: String, required: true }, 
   message: { type: String, required: true },
   seen: { type: Boolean, default: false },
+  deleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
