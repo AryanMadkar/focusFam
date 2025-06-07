@@ -1,0 +1,279 @@
+{
+  "name": "User Routes Tests",
+  "description": "Test cases for user authentication and profile management",
+  "tests": [
+    {
+      "group": "User Registration",
+      "tests": [
+        {
+          "name": "Successful registration",
+          "method": "POST",
+          "url": "/api/users/register",
+          "body": {
+            "email": "test@example.com",
+            "password": "Password123!",
+            "username": "testuser",
+            "course": "{\"name\":\"Computer Science\",\"level\":\"Bachelor\"}",
+            "subjects": "[\"Math\",\"Programming\"]",
+            "gender": "male",
+            "age": 25
+          },
+          "files": {
+            "profileImage": "valid_avatar.jpg"
+          },
+          "expectedStatus": 201,
+          "expectations": [
+            "response.success === true",
+            "response.user.email === 'test@example.com'",
+            "response.user.password === undefined",
+            "response.token exists"
+          ]
+        },
+        {
+          "name": "Registration missing required fields",
+          "method": "POST",
+          "url": "/api/users/register",
+          "body": {
+            "email": "incomplete@test.com",
+            "password": "Password123!"
+          },
+          "expectedStatus": 400,
+          "expectations": [
+            "response.message includes 'provide email, password, username, course, and subjects'"
+          ]
+        },
+        {
+          "name": "Duplicate email registration",
+          "method": "POST",
+          "url": "/api/users/register",
+          "body": {
+            "email": "duplicate@test.com",
+            "password": "Password123!",
+            "username": "uniqueuser",
+            "course": "{\"name\":\"Physics\"}",
+            "subjects": "[\"Science\"]"
+          },
+          "setup": "createUser('duplicate@test.com')",
+          "expectedStatus": 400,
+          "expectations": [
+            "response.message === 'User with this email already exists'"
+          ]
+        },
+        {
+          "name": "Invalid profile image format",
+          "method": "POST",
+          "url": "/api/users/register",
+          "body": {
+            "email": "image@test.com",
+            "password": "Password123!",
+            "username": "imagetest",
+            "course": "{\"name\":\"Arts\"}",
+            "subjects": "[\"Design\"]"
+          },
+          "files": {
+            "profileImage": "document.pdf"
+          },
+          "expectedStatus": 500,
+          "expectations": [
+            "response.message === 'Error uploading profile image'"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "User Login",
+      "tests": [
+        {
+          "name": "Successful login",
+          "method": "POST",
+          "url": "/api/users/login",
+          "body": {
+            "email": "login@test.com",
+            "password": "ValidPassword123!"
+          },
+          "setup": "createUser('login@test.com')",
+          "expectedStatus": 200,
+          "expectations": [
+            "response.success === true",
+            "response.token exists",
+            "cookies.jwt exists"
+          ]
+        },
+        {
+          "name": "Login with incorrect credentials",
+          "method": "POST",
+          "url": "/api/users/login",
+          "body": {
+            "email": "unknown@test.com",
+            "password": "WrongPassword"
+          },
+          "expectedStatus": 401,
+          "expectations": [
+            "response.message === 'Incorrect email or password'"
+          ]
+        },
+        {
+          "name": "Login to deactivated account",
+          "method": "POST",
+          "url": "/api/users/login",
+          "body": {
+            "email": "inactive@test.com",
+            "password": "ValidPassword123!"
+          },
+          "setup": "createDeactivatedUser('inactive@test.com')",
+          "expectedStatus": 401,
+          "expectations": [
+            "response.message includes 'account has been deactivated'"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Authenticated Routes",
+      "setup": "loginUser()",
+      "tests": [
+        {
+          "name": "Get current user profile",
+          "method": "GET",
+          "url": "/api/users/me",
+          "expectedStatus": 200,
+          "expectations": [
+            "response.user.id === currentUserId",
+            "response.user.email exists"
+          ]
+        },
+        {
+          "name": "Update user profile",
+          "method": "PATCH",
+          "url": "/api/users/update_profile",
+          "body": {
+            "username": "updated_username",
+            "age": "30",
+            "subjects": "[\"Math\",\"Physics\"]"
+          },
+          "files": {
+            "profileImage": "new_avatar.jpg"
+          },
+          "expectedStatus": 200,
+          "expectations": [
+            "response.user.username === 'updated_username'",
+            "response.user.age === 30",
+            "response.user.profileImage exists"
+          ]
+        },
+        {
+          "name": "Change password",
+          "method": "PATCH",
+          "url": "/api/users/change_password",
+          "body": {
+            "currentPassword": "OriginalPassword123!",
+            "newPassword": "NewSecurePassword456!"
+          },
+          "setup": "setPassword('OriginalPassword123!')",
+          "expectedStatus": 200,
+          "expectations": [
+            "response.message === 'Password changed successfully'",
+            "response.token exists"
+          ]
+        },
+        {
+          "name": "Logout user",
+          "method": "POST",
+          "url": "/api/users/logout",
+          "expectedStatus": 200,
+          "expectations": [
+            "response.success === true",
+            "cookies.jwt === 'loggedout' or expires soon"
+          ]
+        },
+        {
+          "name": "Delete account (deactivate)",
+          "method": "DELETE",
+          "url": "/api/users/delete_account",
+          "expectedStatus": 200,
+          "expectations": [
+            "response.success === true",
+            "dbUser.isActive === false",
+            "cookies.jwt cleared"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Protected Route Access",
+      "tests": [
+        {
+          "name": "Access protected route without token",
+          "method": "GET",
+          "url": "/api/users/me",
+          "expectedStatus": 401,
+          "expectations": [
+            "response.message === 'You are not logged in'"
+          ]
+        },
+        {
+          "name": "Access protected route with invalid token",
+          "method": "GET",
+          "url": "/api/users/me",
+          "headers": {
+            "Cookie": "jwt=invalid_token_here"
+          },
+          "expectedStatus": 401,
+          "expectations": [
+            "response.message includes 'Invalid token'"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Password Change Validation",
+      "setup": "loginUser()",
+      "tests": [
+        {
+          "name": "Incorrect current password",
+          "method": "PATCH",
+          "url": "/api/users/change_password",
+          "body": {
+            "currentPassword": "WrongPassword",
+            "newPassword": "NewPassword123!"
+          },
+          "expectedStatus": 400,
+          "expectations": [
+            "response.message === 'Current password is incorrect'"
+          ]
+        },
+        {
+          "name": "Missing password fields",
+          "method": "PATCH",
+          "url": "/api/users/change_password",
+          "body": {
+            "currentPassword": "ValidPassword"
+          },
+          "expectedStatus": 400,
+          "expectations": [
+            "response.message includes 'provide current password and new password'"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Profile Update Validation",
+      "setup": "loginUser()",
+      "tests": [
+        {
+          "name": "Duplicate username update",
+          "method": "PATCH",
+          "url": "/api/users/update_profile",
+          "body": {
+            "username": "existing_username"
+          },
+          "setup": "createUser('existing@test.com', 'existing_username')",
+          "expectedStatus": 400,
+          "expectations": [
+            "response.message === 'Username already exists'"
+          ]
+        }
+      ]
+    }
+  ]
+}

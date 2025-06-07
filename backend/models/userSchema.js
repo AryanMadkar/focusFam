@@ -73,10 +73,7 @@ const userSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// Indexes for better performance
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
-userSchema.index({ createdAt: -1 });
+
 
 // Password hashing middleware
 userSchema.pre('save', async function(next) {

@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const { uploadToCloudinary } = require('../middleware/upload');
+const User = require('../models/userSchema');
+const { uploadToCloudinary } = require('../middlewares/fileuploade');
 const jwt = require('jsonwebtoken');
 
 // Helper function to generate JWT token

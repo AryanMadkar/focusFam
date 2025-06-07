@@ -9,7 +9,7 @@ const {
   changePassword,
   deleteAccount
 } = require('../controllers/UserController');
-const { protect, preventLoggedIn } = require('../middleware/auth');
+const { protect, preventLoggedIn } = require('../middlewares/Jsonwebtoken');
 
 const router = express.Router();
 
@@ -17,28 +17,29 @@ const router = express.Router();
 const upload = multer({
   dest: 'uploads/',
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Please upload only image files'), false);
+      cb(new Error('Only image files are allowed'), false);
     }
   }
 });
 
-// Public routes (no authentication required)
+// Public routes
 router.post('/register', preventLoggedIn, upload.single('profileImage'), registerUser);
 router.post('/login', preventLoggedIn, loginUser);
 
-// Protected routes (authentication required)
-router.use(protect); // All routes after this middleware are protected
+// Middleware to protect all routes below
+router.use(protect);
 
+// Authenticated user routes
 router.post('/logout', logoutUser);
 router.get('/me', getMe);
-router.patch('/update-profile', upload.single('profileImage'), updateProfile);
-router.patch('/change-password', changePassword);
-router.delete('/delete-account', deleteAccount);
+router.patch('/update_profile', upload.single('profileImage'), updateProfile);
+router.patch('/change_password', changePassword);
+router.delete('/delete_account', deleteAccount);
 
 module.exports = router;
