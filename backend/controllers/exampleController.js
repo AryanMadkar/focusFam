@@ -23,3 +23,11 @@ exports.createExample = async (req, res, next) => {
     next(err);
   }
 };
+
+
+
+exports.logoutUser = (req, res) => {
+  // Optional: if you’re using cookies:
+  res.clearCookie('token'); // only if token is stored as HTTP-only cookie
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+};
